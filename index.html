@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ASAR工具</title>
+  <style>
+    body { font-family: 'Microsoft YaHei', sans-serif; text-align: center; padding: 50px; background-color: #f3f4f6; color: #333; }
+    h1 { margin-bottom: 10px; }
+    p { color: #666; margin-bottom: 30px; }
+    .btn { padding: 15px 30px; font-size: 18px; margin: 10px 20px; cursor: pointer; border: none; border-radius: 8px; color: white; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-extract { background-color: #10b981; } 
+    .btn-pack { background-color: #3b82f6; }    
+    .btn:hover { opacity: 0.8; transform: translateY(-2px); }
+    .btn:disabled { background-color: #9ca3af; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ====== 新增的进度条 UI 样式 ====== */
+    #progressContainer {
+      width: 70%;
+      height: 8px;
+      background-color: #e5e7eb;
+      border-radius: 10px;
+      margin: 30px auto 10px auto;
+      overflow: hidden;
+      display: none; /* 默认隐藏 */
+    }
+    #progressBar {
+      width: 30%;
+      height: 100%;
+      background-color: #3b82f6;
+      border-radius: 10px;
+      /* 来回滚动的丝滑动画 */
+      animation: loading 1.2s infinite ease-in-out; 
+    }
+    #statusText {
+      font-size: 14px;
+      color: #3b82f6;
+      font-weight: bold;
+      display: none; /* 默认隐藏 */
+    }
+
+    @keyframes loading {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
+    .btn-cancel { background-color: #ef4444; display: none; } /* 红色，默认隐藏 */
+  </style>
+</head>
+<body>
+  <h1>Asar 解包/打包工具</h1>
+  
+  <button class="btn btn-extract" id="extractBtn">解包 (Extract)</button>
+  <button class="btn btn-pack" id="packBtn">打包 (Pack)</button>
+  <button class="btn btn-cancel" id="cancelBtn">⏹ 取消操作 (Cancel)</button>
+  <div id="progressContainer">
+    <div id="progressBar"></div>
+  </div>
+  <div id="statusText">正在处理中，请稍候...</div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    const extractBtn = document.getElementById('extractBtn');
+    const packBtn = document.getElementById('packBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const progressContainer = document.getElementById('progressContainer');
+    const statusText = document.getElementById('statusText');
+
+    // 控制界面状态
+    function setWorkingState(isWorking, text = '...') {
+      extractBtn.disabled = isWorking;
+      packBtn.disabled = isWorking;
+      
+      if (isWorking) {
+        cancelBtn.style.display = 'inline-block'; // 干活时显示取消按钮
+        progressContainer.style.display = 'block';
+        statusText.style.display = 'block';
+        statusText.innerText = text;
+      } else {
+        cancelBtn.style.display = 'none'; // 闲置时隐藏取消按钮
+        progressContainer.style.display = 'none';
+        statusText.style.display = 'none';
+      }
+    }
+
+    // 绑定【取消】按钮
+    cancelBtn.addEventListener('click', async () => {
+      cancelBtn.disabled = true;
+      cancelBtn.innerText = '正在强制终止...';
+      await ipcRenderer.invoke('cancel-task'); // 通知后台杀掉线程
+      
+      // 恢复取消按钮的初始状态（为了下次使用）
+      cancelBtn.disabled = false;
+      cancelBtn.innerText = '⏹ 取消操作 (Cancel)';
+    });
+
+    // 解包点击事件
+    extractBtn.addEventListener('click', async () => {
+      setWorkingState(true, '正在解包提取文件，请稍候...');
+      const result = await ipcRenderer.invoke('extract-asar');
+      setWorkingState(false);
+      
+      if (result.success) {
+        alert('解包成功！\n文件已经提取到：\n' + result.destPath);
+      } else if (result.msg !== '用户取消了选择') {
+        alert('⚠️ ' + result.msg);
+      }
+    });
+
+    // 打包点击事件
+    packBtn.addEventListener('click', async () => {
+      setWorkingState(true, '正在封装打包，为了保证数据完整，请耐心等待...');
+      const result = await ipcRenderer.invoke('pack-asar');
+      setWorkingState(false);
+      
+      if (result.success) {
+        alert('打包成功！\n新文件已生成在：\n' + result.destPath + '\n\n(请确保将其命名为 app.asar 并替换原游戏文件(非妹居玩家可忽略))');
+      } else if (result.msg !== '用户取消了选择') {
+        alert('⚠️ ' + result.msg);
+      }
+    });
+  </script>
+</body>
+</html>

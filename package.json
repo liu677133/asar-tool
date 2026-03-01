@@ -1,0 +1,28 @@
+{
+  "name": "asar",
+  "version": "1.0.0",
+  "description": "Asar打包/解包工具",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win"
+  },
+  "keywords": [],
+  "author": "ly",
+  "license": "ISC",
+  "dependencies": {
+    "asar": "^3.2.0"
+  },
+  "devDependencies": {
+    "electron": "^40.6.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.ly.asartool",
+    "productName": "Asar工具",
+    "win": {
+      "target": "portable",
+      "icon": "anon.ico"
+    }
+  }
+}
